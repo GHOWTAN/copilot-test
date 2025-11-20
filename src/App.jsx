@@ -58,7 +58,9 @@ export default function App(){
     const maxStamina = 1
     const staminaDrain = 0.7 // per second while boosting
     const staminaRecover = 0.28 // per second while not boosting
-    const boostMultiplier = 2
+    const boostMultiplier = 2.5
+    // player growth limits
+    const maxPlayerSize = 64
 
     // richer, more 'pico' palette (neon/cool set)
     const colors = ['#1D2B53','#7E2553','#008751','#AB5236','#5F574F','#C2C3C7','#FFF1E8','#FF004D','#FFA300','#FFEC27','#00E436','#29ADFF','#83769C','#FF77A8','#FFCCAA']
@@ -257,6 +259,9 @@ export default function App(){
                 color: ob.color
               })
             }
+            // grow player a bit based on obstacle size (but cap)
+            const growth = Math.max(2, Math.floor(ob.size / 8))
+            player.size = Math.min(maxPlayerSize, player.size + growth)
             // popup text
             popups.push({x: ob.x, y: ob.y, life: 0.9, text: '+5', color: ob.color})
             obstacles.splice(i, 1)
