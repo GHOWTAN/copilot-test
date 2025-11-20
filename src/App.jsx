@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react'
+import bgMusic from './assets/stay_safe.mp3'
 
 const WIDTH = 480
 const HEIGHT = 320
@@ -27,7 +28,7 @@ export default function App(){
     const ctx = canvas.getContext('2d')
 
     // background music: try to play on start, fall back to first user gesture if autoplay blocked
-    const bgm = new Audio('/song/stay_safe.mp3')
+    const bgm = new Audio(bgMusic)
     bgm.loop = true
     let bgmPlayed = false
     function onFirstPlayGesture(){
