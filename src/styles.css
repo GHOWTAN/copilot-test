@@ -1,0 +1,40 @@
+
+html,body,#root{height:100%;}
+body{
+  margin:0;
+  background: linear-gradient(180deg,#07111a,#06090b);
+  color:#e6eef6;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, monospace;
+  -webkit-font-smoothing:antialiased;
+}
+.app{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  height:100vh;
+}
+.panel{
+  background: linear-gradient(180deg,#08141f,#041019);
+  border:6px solid #000;
+  padding:10px;
+  border-radius:6px;
+  box-shadow: 0 6px 30px rgba(0,0,0,0.6), inset 0 -6px 18px rgba(255,255,255,0.02);
+}
+.panel.pico{background: linear-gradient(180deg,#07111a,#041019);}
+.hud{display:flex;gap:12px;align-items:center;margin-bottom:8px}
+.hud .score{font-weight:800;color:#8cffb2}
+.hint{opacity:0.85;font-size:12px;color:#bfe7ff}
+
+/* canvas styling: thin highlight border like Pico-8 cartridge */
+canvas{display:block;background:#07111a;border:4px solid #070707;image-rendering:pixelated}
+
+.panel:after{
+  content:'';
+  display:block;
+  height:6px;
+  background:linear-gradient(90deg,#1d2b53 0%, #007abf 50%, #00e436 100%);
+  margin-top:8px;
+  border-radius:3px;
+  opacity:0.06;
+}
+
