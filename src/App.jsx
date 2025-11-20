@@ -26,6 +26,26 @@ export default function App(){
     const canvas = canvasRef.current
     const ctx = canvas.getContext('2d')
 
+    // background music: try to play on start, fall back to first user gesture if autoplay blocked
+    const bgm = new Audio('/song/stay_safe.mp3')
+    bgm.loop = true
+    let bgmPlayed = false
+    function onFirstPlayGesture(){
+      bgm.play().then(()=>{ bgmPlayed = true }).catch(()=>{})
+      window.removeEventListener('keydown', onFirstPlayGesture)
+      window.removeEventListener('pointerdown', onFirstPlayGesture)
+    }
+    function tryPlayBgm(){
+      const p = bgm.play()
+      if(p && typeof p.then === 'function'){
+        p.then(()=>{ bgmPlayed = true }).catch(()=>{
+          // wait for user gesture
+          window.addEventListener('keydown', onFirstPlayGesture)
+          window.addEventListener('pointerdown', onFirstPlayGesture)
+        })
+      }
+    }
+
     let raf = null
     let last = performance.now()
     let spawnTimer = 0
@@ -85,20 +105,31 @@ export default function App(){
     }
 
     function spawn(){
-      const edge = Math.floor(rand(0,4))
-      let x,y,vx,vy
-      // avoid too-small obstacles; give a reasonable random size
-      const size = Math.floor(rand(16, 48))
-      const speed = rand(40, 240)
-      if(edge===0){ // top
-        x = rand(0, WIDTH); y = -size; vx = rand(-1,1); vy = 1
-      } else if(edge===1){ // right
-        x = WIDTH + size; y = rand(0, HEIGHT); vx = -1; vy = rand(-1,1)
-      } else if(edge===2){ // bottom
-        x = rand(0, WIDTH); y = HEIGHT + size; vx = rand(-1,1); vy = -1
-      } else { // left
-        x = -size; y = rand(0, HEIGHT); vx = 1; vy = rand(-1,1)
+      // pick a random point on the rectangle boundary (uniform on edges)
+      const perim = 2*(WIDTH + HEIGHT)
+      const t = rand(0, perim)
+      let x, y
+      if(t < WIDTH){
+        // top edge
+        x = t; y = -16
+      } else if(t < WIDTH + HEIGHT){
+        // right edge
+        x = WIDTH + 16; y = t - WIDTH
+      } else if(t < WIDTH + HEIGHT + WIDTH){
+        // bottom edge
+        x = t - (WIDTH + HEIGHT); y = HEIGHT + 16
+      } else {
+        // left edge
+        x = -16; y = t - (2*WIDTH + HEIGHT)
       }
+      // obstacle size and speed (kept reasonable)
+      const size = Math.floor(rand(16, 48))
+      const speed = rand(50, 180)
+      // target is a random interior point (not too close to edges) so direction varies
+      const tx = rand(WIDTH*0.15, WIDTH*0.85)
+      const ty = rand(HEIGHT*0.15, HEIGHT*0.85)
+      let vx = tx - x
+      let vy = ty - y
       const mag = Math.hypot(vx,vy) || 1
       vx = (vx/mag) * speed
       vy = (vy/mag) * speed
@@ -138,6 +169,21 @@ export default function App(){
       }
       obstacles = obstacles.filter(o => o.x > -150 && o.x < WIDTH+150 && o.y > -150 && o.y < HEIGHT+150)
 
+      // update particles
+      for(const p of particles){
+        p.life -= dt
+        p.x += p.vx * dt
+        p.y += p.vy * dt
+      }
+      particles = particles.filter(p => p.life > 0)
+
+      // update popups
+      for(const pp of popups){
+        pp.life -= dt
+        pp.y -= 18 * dt
+      }
+      popups = popups.filter(pp => pp.life > 0)
+
       // spawn logic
       spawnTimer -= dt
       if(spawnTimer <= 0){
@@ -164,9 +210,24 @@ export default function App(){
         const rx = player.x - half
         const ry = player.y - half
         if(circleRectCollision(ob.x, ob.y, r, rx, ry, player.size, player.size)){
-          // if obstacle color matches player color, award bonus and remove obstacle
+          // if obstacle color matches player color, award bonus and remove obstacle + spawn effect
           if(ob.color && ob.color === player.color){
             bonus += 5
+            // spawn particles
+            for(let k=0;k<10;k++){
+              const ang = Math.random() * Math.PI * 2
+              const sp = Math.random() * 120 + 40
+              particles.push({
+                x: ob.x,
+                y: ob.y,
+                vx: Math.cos(ang) * sp,
+                vy: Math.sin(ang) * sp,
+                life: 0.5 + Math.random() * 0.5,
+                color: ob.color
+              })
+            }
+            // popup text
+            popups.push({x: ob.x, y: ob.y, life: 0.9, text: '+5', color: ob.color})
             obstacles.splice(i, 1)
             continue
           }
@@ -188,15 +249,58 @@ export default function App(){
       ctx.fillStyle = '#07111a'
       ctx.fillRect(0,0,WIDTH,HEIGHT)
 
-      // draw obstacles (circles with light outline)
+      // draw obstacles (circles) with pulsing border for safe (same-color) ones
       for(const ob of obstacles){
+        const isSafe = ob.color && ob.color === player.color
+        // base circle
         ctx.fillStyle = ob.color || '#9bd2ff'
         ctx.beginPath()
         ctx.arc(ob.x, ob.y, ob.size/2, 0, Math.PI*2)
         ctx.fill()
-        ctx.strokeStyle = 'rgba(0,0,0,0.28)'
-        ctx.lineWidth = 1
-        ctx.stroke()
+        // stroke / pulsing border if safe
+        if(isSafe){
+          const pulse = 1 + Math.sin(elapsed * 18 + ob.x * 0.1) * 0.6
+          // make outer border wider and slightly larger so it's more obvious
+          ctx.strokeStyle = 'rgba(255,255,255,0.18)'
+          ctx.lineWidth = 3.5 * pulse
+          ctx.beginPath()
+          ctx.arc(ob.x, ob.y, ob.size/2 + 3 + pulse*2.0, 0, Math.PI*2)
+          ctx.stroke()
+          // inner colored shimmer
+          ctx.strokeStyle = ob.color
+          ctx.globalAlpha = 0.95
+          ctx.lineWidth = 1.25
+          ctx.beginPath()
+          ctx.arc(ob.x, ob.y, ob.size/2 + 1.6, 0, Math.PI*2)
+          ctx.stroke()
+          ctx.globalAlpha = 1
+        } else {
+          ctx.strokeStyle = 'rgba(0,0,0,0.28)'
+          ctx.lineWidth = 1
+          ctx.stroke()
+        }
+      }
+
+      // draw particles
+      for(const p of particles){
+        const t = Math.max(0, p.life)
+        const a = Math.min(1, t / 0.6)
+        ctx.globalAlpha = a
+        ctx.fillStyle = p.color || '#fff'
+        ctx.beginPath()
+        ctx.arc(p.x, p.y, 2.2, 0, Math.PI*2)
+        ctx.fill()
+        ctx.globalAlpha = 1
+      }
+
+      // draw popups
+      for(const pp of popups){
+        ctx.globalAlpha = Math.min(1, pp.life / 0.9)
+        ctx.fillStyle = pp.color || '#fff'
+        ctx.font = '12px monospace'
+        ctx.textAlign = 'center'
+        ctx.fillText(pp.text, pp.x, pp.y)
+        ctx.globalAlpha = 1
       }
 
       // draw player (square)
@@ -273,6 +377,7 @@ export default function App(){
 
     // init
     reset()
+    tryPlayBgm()
     last = performance.now()
     raf = requestAnimationFrame(loop)
 
@@ -280,6 +385,10 @@ export default function App(){
       cancelAnimationFrame(raf)
       window.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('keyup', onKeyUp)
+      // stop bgm and cleanup listeners
+      try{ bgm.pause(); bgm.currentTime = 0 }catch(e){}
+      window.removeEventListener('keydown', onFirstPlayGesture)
+      window.removeEventListener('pointerdown', onFirstPlayGesture)
     }
 
   }, [])
