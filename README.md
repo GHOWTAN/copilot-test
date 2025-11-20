@@ -13,7 +13,6 @@ Score
 Run (macOS, zsh)
 
 ```bash
-cd /Users/winx/Desktop/Zhihao/2025/github-copilot-test
 npm install
 npm run dev
 ```
