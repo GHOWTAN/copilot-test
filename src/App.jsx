@@ -59,12 +59,12 @@ export default function App(){
     const maxStamina = 1
     const staminaDrain = 0.7 // per second while boosting
     const staminaRecover = 0.28 // per second while not boosting
-    const boostMultiplier = 2.5
+    const boostMultiplier = 3
     // player growth limits
     const maxPlayerSize = 64
 
     // richer, more 'pico' palette (neon/cool set)
-    const colors = ['#1D2B53','#7E2553','#008751','#AB5236','#5F574F','#C2C3C7','#FFF1E8','#FF004D','#FFA300','#FFEC27','#00E436','#29ADFF','#83769C','#FF77A8','#FFCCAA']
+    const colors = ['#FFCCAA', '#AB5236', '#07111a','#7E2553','#008751','#5F574F','#C2C3C7','#FFF1E8','#FF004D','#FFA300','#FFEC27','#00E436','#29ADFF','#83769C','#FF77A8']
 
     const player = {
       x: WIDTH/2,
@@ -284,7 +284,7 @@ export default function App(){
       ctx.clearRect(0,0,WIDTH,HEIGHT)
 
       // subtle vignette
-      ctx.fillStyle = '#07111a'
+      ctx.fillStyle = '#1D2B53' //07111a
       ctx.fillRect(0,0,WIDTH,HEIGHT)
 
       // draw obstacles (circles) with pulsing border for safe (same-color) ones
@@ -341,13 +341,72 @@ export default function App(){
         ctx.globalAlpha = 1
       }
 
-      // draw player (square)
-      ctx.fillStyle = player.color
+      // draw player (square) with pulsing/bling border
       const s = player.size
-      ctx.fillRect(player.x - s/2, player.y - s/2, s, s)
-      ctx.strokeStyle = 'rgba(0,0,0,0.35)'
-      ctx.lineWidth = 2
-      ctx.strokeRect(player.x - s/2, player.y - s/2, s, s)
+      // pulse factor based on elapsed time to give a bling effect
+        const pulse = 1 + Math.sin(elapsed * 14 + player.x * 0.12) * 0.6
+        ctx.save()
+        // outer glow ellipse
+        ctx.strokeStyle = 'rgba(255,255,255,0.18)'
+        ctx.lineWidth = 4 * pulse
+        ctx.beginPath()
+        ctx.ellipse(player.x, player.y, s * 1.4 + pulse * 2.6, s * 0.7 + pulse * 1.2, 0, 0, Math.PI * 2)
+        ctx.stroke()
+
+        // inner colored rim shimmer
+        ctx.strokeStyle = player.color
+        ctx.lineWidth = 1.6
+        ctx.globalAlpha = 0.95
+        ctx.beginPath()
+        ctx.ellipse(player.x, player.y, s * 1.05, s * 0.55, 0, 0, Math.PI * 2)
+        ctx.stroke()
+        ctx.globalAlpha = 1
+
+        // saucer body: use player's color for better visibility, with subtle highlight overlay
+        ctx.fillStyle = player.color
+        ctx.beginPath()
+        ctx.ellipse(player.x, player.y, s, s * 0.45, 0, 0, Math.PI * 2)
+        ctx.fill()
+        // add a soft highlight gradient on top for a metallic feel
+        const hg = ctx.createLinearGradient(player.x - s, player.y - s*0.2, player.x + s, player.y + s*0.2)
+        hg.addColorStop(0, 'rgba(255,255,255,0.28)')
+        hg.addColorStop(0.5, 'rgba(255,255,255,0.06)')
+        hg.addColorStop(1, 'rgba(0,0,0,0.08)')
+        ctx.globalAlpha = 0.36
+        ctx.fillStyle = hg
+        ctx.beginPath()
+        ctx.ellipse(player.x, player.y - s*0.04, s, s * 0.45, 0, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.globalAlpha = 1
+
+        // dome on top
+        ctx.fillStyle = 'rgba(255,255,255,0.9)'
+        ctx.beginPath()
+        ctx.ellipse(player.x, player.y - s * 0.18, s * 0.42, s * 0.24, 0, 0, Math.PI * 2)
+        ctx.fill()
+
+        // lights along rim
+        const lights = Math.max(4, Math.floor(s / 4))
+        for(let i=0;i<lights;i++){
+          const ang = (i / lights) * Math.PI * 2 + elapsed * 1.6
+          const lx = player.x + Math.cos(ang) * (s * 0.9)
+          const ly = player.y + Math.sin(ang) * (s * 0.38)
+          const lpulse = 0.9 + Math.sin(elapsed * 8 + i) * 0.3
+          ctx.beginPath()
+          ctx.fillStyle = (i % 2 === 0) ? '#ffec27' : '#29adff'
+          ctx.globalAlpha = 0.9 * lpulse
+          ctx.arc(lx, ly, 2.2 * (s/22) * lpulse, 0, Math.PI * 2)
+          ctx.fill()
+          ctx.globalAlpha = 1
+        }
+
+        // subtle shadow under the saucer
+        ctx.fillStyle = 'rgba(0,0,0,0.12)'
+        ctx.beginPath()
+        ctx.ellipse(player.x, player.y + s * 0.62, s * 0.9, s * 0.25, 0, 0, Math.PI * 2)
+        ctx.fill()
+
+        ctx.restore()
 
       // HUD - pico8 style
       ctx.fillStyle = '#000000'
@@ -368,8 +427,8 @@ export default function App(){
 
       // draw stamina bar (right of HUD)
       const barX = 140
-      const barY = 10
-      const barW = 120
+      const barY = 11
+      const barW = 320
       const barH = 14
       // background
       ctx.fillStyle = '#000'
@@ -446,13 +505,16 @@ export default function App(){
     }
 
   }, [])
-
+  //IT IS BIG MESS, BECAUSE THE LIGHTS WENT OUT
   return (
     <div className="app">
       <div className="panel pico">
         <div className="hud">
-          <div className="score">PICO-8 DEMO</div>
-          <div className="hint">Move: Arrows / WASD · Hold Z: color · X: Restart</div>
+          <div className="score"> SWARM ESCAPE </div>
+          <div className="hint"> Color aligns,
+            Safety shines.
+            Growth takes hold,
+            A story untold. </div> 
         </div>
         <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} />
       </div>
