@@ -600,13 +600,16 @@ export default function App(){
     <div className="app">
       <div className="panel pico">
         <div className="hud">
-          <div className="score"> GALAXY ESCAPE </div>
+          <div className="score" style={{fontSize:'20px'}}> GALAXY ESCAPE </div>
           <div className="hint"> Color aligns,
             Safety shines.
             Growth takes hold,
             A story untold. </div> 
         </div>
-        <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} />
+        {/*<canvas ref={canvasRef} width={WIDTH} height={HEIGHT} />*/}
+        <canvas ref={canvasRef} width={WIDTH} height={HEIGHT}
+          style={{ width: WIDTH * 2, height: HEIGHT * 2, imageRendering: 'pixelated' }} 
+        />
       </div>
     </div>
   )

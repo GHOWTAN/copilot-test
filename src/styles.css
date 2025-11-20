@@ -4,7 +4,7 @@ body{
   margin:0;
   background: linear-gradient(180deg,#07111a,#06090b);
   color:#e6eef6;
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, monospace;
+  font-family:  monospace;
   -webkit-font-smoothing:antialiased;
 }
 .app{
@@ -23,7 +23,7 @@ body{
 .panel.pico{background: linear-gradient(180deg,#07111a,#041019);}
 .hud{display:flex;gap:12px;align-items:center;margin-bottom:8px}
 .hud .score{font-weight:800;color:#8cffb2}
-.hint{opacity:0.85;font-size:12px;color:#bfe7ff}
+.hint{opacity:0.85;font-size:16px;color:#bfe7ff}
 
 /* canvas styling: thin highlight border like Pico-8 cartridge */
 canvas{display:block;background:#07111a;border:4px solid #070707;image-rendering:pixelated}
