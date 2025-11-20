@@ -1,0 +1,5 @@
+private email address:
+git config user.email "USERNAME@users.noreply.github.com"   # replace USERNAME
+git commit --amend --reset-author --no-edit
+git log -1 --pretty=fuller
+git push --force-with-lease origin main
