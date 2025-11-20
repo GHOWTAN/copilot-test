@@ -595,11 +595,12 @@ export default function App(){
 
   }, [])
   //IT IS BIG MESS, BECAUSE THE LIGHTS WENT OUT
+  //SWARM ESCAPE? NOW IT IS TIME TO GO GALAXY
   return (
     <div className="app">
       <div className="panel pico">
         <div className="hud">
-          <div className="score"> SWARM ESCAPE </div>
+          <div className="score"> GALAXY ESCAPE </div>
           <div className="hint"> Color aligns,
             Safety shines.
             Growth takes hold,
