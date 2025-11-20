@@ -108,6 +108,7 @@ export default function App(){
     let obstacles = []
     let particles = []
     let popups = []
+    let aliens = []
 
     function getSpawnInterval(){
       // spawn faster as time increases
@@ -148,6 +149,19 @@ export default function App(){
       // pick a color for the obstacle from the palette (avoid very-dark base color)
       const col = colors[Math.floor(rand(0, colors.length))]
       obstacles.push({x,y,size,vx,vy, color: col})
+    }
+
+    function spawnAlien(px, py, psize, pcolor){
+      // decorative dancing alien: disco-style, larger and neon-colored
+      const size = psize || Math.floor(rand(28, 48))
+      const x = (typeof px === 'number') ? px : rand(size + 8, WIDTH - size - 8)
+      const y = (typeof py === 'number') ? py : rand(HEIGHT*0.25, HEIGHT*0.6)
+      const life = rand(3.5, 6.0)
+      const neon = ['#FF004D','#FFEC27','#29ADFF','#00E436','#FF77A8','#FFA300']
+      const color = pcolor || neon[Math.floor(rand(0, neon.length))]
+      // sparkle hue offset and rotation speed
+      const spin = rand(-3.5, 3.5)
+      aliens.push({x,y,size,life,phase: rand(0, Math.PI*2), color, spin})
     }
 
     function update(dt){
@@ -225,6 +239,17 @@ export default function App(){
         spawnTimer = getSpawnInterval()
       }
 
+      // Note: ambient alien spawn removed — aliens now appear when player collects same-color obstacles
+
+      // update aliens animation and lifetime
+      for(const a of aliens){
+        a.life -= dt
+        a.phase += dt * 6
+        // slight bobbing
+        a.y += Math.sin(a.phase) * 6 * dt
+      }
+      aliens = aliens.filter(a => a.life > 0)
+
       // color cycling while holding z
       if(keys['z']){
         colorTimer += dt
@@ -265,6 +290,8 @@ export default function App(){
             player.size = Math.min(maxPlayerSize, player.size + growth)
             // popup text
             popups.push({x: ob.x, y: ob.y, life: 0.9, text: '+5', color: ob.color})
+            // spawn a disco alien at the collection point for a celebratory dance
+            spawnAlien(ob.x, ob.y, Math.min(48, Math.floor(ob.size * 1.2)), ob.color)
             obstacles.splice(i, 1)
             continue
           }
@@ -288,6 +315,68 @@ export default function App(){
       ctx.fillRect(0,0,WIDTH,HEIGHT)
 
       // draw obstacles (circles) with pulsing border for safe (same-color) ones
+      // draw decorative dancing aliens (background)
+      for(const a of aliens){
+        ctx.save()
+        // disco spotlight (radial gradient) beneath the alien
+        const grd = ctx.createRadialGradient(a.x, a.y + a.size*0.6, 4, a.x, a.y + a.size*0.6, a.size*2.2)
+        grd.addColorStop(0, 'rgba(255,255,255,0.22)')
+        grd.addColorStop(0.25, 'rgba(255,255,255,0.08)')
+        grd.addColorStop(1, 'rgba(0,0,0,0)')
+        ctx.globalAlpha = 0.9 * Math.min(1, a.life / 4 + 0.2)
+        ctx.fillStyle = grd
+        ctx.beginPath()
+        ctx.ellipse(a.x, a.y + a.size*0.6, a.size*1.8, a.size*0.7, 0, 0, Math.PI*2)
+        ctx.fill()
+
+        // disco body: rotate slightly with spin and pulse
+        const pulse = 1 + Math.sin(a.phase * 3 + elapsed * 6) * 0.12
+        ctx.translate(a.x, a.y)
+        ctx.rotate(a.phase * 0.6 + (a.spin || 0) * elapsed * 0.12)
+
+        // flashing neon fill that cycles through a few hues
+        const flash = Math.floor((Math.abs(Math.sin(a.phase * 2 + elapsed * 4)) * 3))
+        const neonPalette = ['#FF004D','#FFEC27','#29ADFF','#00E436','#FF77A8']
+        const fillCol = neonPalette[flash % neonPalette.length]
+        ctx.fillStyle = fillCol
+        ctx.beginPath()
+        ctx.ellipse(0, 0, a.size * 1.05 * pulse, a.size * 0.55 * pulse, 0, 0, Math.PI*2)
+        ctx.fill()
+
+        // clear dome (lighter top)
+        ctx.fillStyle = 'rgba(255,255,255,0.85)'
+        ctx.beginPath()
+        ctx.ellipse(0, -a.size * 0.22, a.size * 0.5 * pulse, a.size * 0.28 * pulse, 0, 0, Math.PI*2)
+        ctx.fill()
+
+        // disco rim lights (bigger and brighter)
+        const lights = Math.max(5, Math.floor(a.size / 3))
+        for(let i=0;i<lights;i++){
+          const ang = (i / lights) * Math.PI * 2 + a.phase * 1.8
+          const lx = Math.cos(ang) * (a.size * 0.95 * pulse)
+          const ly = Math.sin(ang) * (a.size * 0.42 * pulse)
+          const lpulse = 0.6 + Math.abs(Math.sin(a.phase * 3 + i)) * 0.8
+          ctx.beginPath()
+          ctx.fillStyle = neonPalette[(i + Math.floor(elapsed)) % neonPalette.length]
+          ctx.globalAlpha = Math.min(1, 0.9 * lpulse * (a.life / 4 + 0.3))
+          ctx.arc(lx, ly, 2.6 * (a.size/32) * lpulse, 0, Math.PI*2)
+          ctx.fill()
+        }
+
+        // little sparkles around the alien for extra disco flare
+        ctx.globalAlpha = Math.min(1, 0.9 * (a.life / 4 + 0.2))
+        for(let s=0;s<4;s++){
+          const ang = Math.random() * Math.PI * 2
+          const r = a.size * (0.9 + Math.random() * 0.8)
+          ctx.fillStyle = neonPalette[Math.floor(Math.random() * neonPalette.length)]
+          ctx.beginPath()
+          ctx.arc(Math.cos(ang) * r, Math.sin(ang) * r, Math.random() * 2.6, 0, Math.PI*2)
+          ctx.fill()
+        }
+
+        ctx.globalAlpha = 1
+        ctx.restore()
+      }
       for(const ob of obstacles){
         const isSafe = ob.color && ob.color === player.color
         // base circle
