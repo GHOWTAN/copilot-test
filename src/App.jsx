@@ -53,6 +53,12 @@ export default function App(){
     let score = 0
     let bonus = 0
     let gameOver = false
+    // stamina / acceleration
+    let stamina = 1 // 0..1
+    const maxStamina = 1
+    const staminaDrain = 0.7 // per second while boosting
+    const staminaRecover = 0.28 // per second while not boosting
+    const boostMultiplier = 2
 
     // richer, more 'pico' palette (neon/cool set)
     const colors = ['#1D2B53','#7E2553','#008751','#AB5236','#5F574F','#C2C3C7','#FFF1E8','#FF004D','#FFA300','#FFEC27','#00E436','#29ADFF','#83769C','#FF77A8','#FFCCAA']
@@ -62,6 +68,7 @@ export default function App(){
       y: HEIGHT/2,
       size: 22, // square: width/height
       speed: 160, // px per sec
+      currentSpeed: 160,
       color: colors[colorIndex]
     }
 
@@ -91,6 +98,8 @@ export default function App(){
       bonus = 0
       gameOver = false
       colorTimer = 0
+      // try to resume background music on restart
+      tryPlayBgm()
     }
 
     let obstacles = []
@@ -150,8 +159,30 @@ export default function App(){
 
       if(dx !== 0 || dy !== 0){
         const inv = 1/Math.hypot(dx||0.0001, dy||0.0001)
-        player.x += (dx * inv) * player.speed * dt
-        player.y += (dy * inv) * player.speed * dt
+        // determine if boosting (Shift) and there is stamina
+        const boosting = (keys['shift']) && stamina > 0
+        const targetSpeed = player.speed * (boosting ? boostMultiplier : 1)
+        // smooth speed change toward target
+        const accelFactor = 6
+        player.currentSpeed += (targetSpeed - player.currentSpeed) * Math.min(1, accelFactor * dt)
+
+        player.x += (dx * inv) * player.currentSpeed * dt
+        player.y += (dy * inv) * player.currentSpeed * dt
+
+        // drain stamina while boosting
+        if(boosting){
+          stamina -= staminaDrain * dt
+          if(stamina < 0) stamina = 0
+        }
+      } else {
+        // when not moving, slowly return speed to normal
+        player.currentSpeed += (player.speed - player.currentSpeed) * Math.min(1, 6 * dt)
+      }
+
+      // recover stamina when not holding shift
+      if(!(keys['shift'])){
+        stamina += staminaRecover * dt
+        if(stamina > maxStamina) stamina = maxStamina
       }
 
       // clamp to bounds (square)
@@ -211,7 +242,7 @@ export default function App(){
         const ry = player.y - half
         if(circleRectCollision(ob.x, ob.y, r, rx, ry, player.size, player.size)){
           // if obstacle color matches player color, award bonus and remove obstacle + spawn effect
-          if(ob.color && ob.color === player.color){
+            if(ob.color && ob.color === player.color){
             bonus += 5
             // spawn particles
             for(let k=0;k<10;k++){
@@ -233,6 +264,7 @@ export default function App(){
           }
           // otherwise it's a hit -> game over
           gameOver = true
+          try{ bgm.pause() }catch(e){}
           break
         }
       }
@@ -328,10 +360,26 @@ export default function App(){
       ctx.strokeStyle = 'rgba(0,0,0,0.6)'
       ctx.strokeRect(110, 10, 18, 18)
 
+      // draw stamina bar (right of HUD)
+      const barX = 140
+      const barY = 10
+      const barW = 120
+      const barH = 14
+      // background
+      ctx.fillStyle = '#000'
+      ctx.globalAlpha = 0.55
+      ctx.fillRect(barX, barY, barW, barH)
+      ctx.globalAlpha = 1
+      // fill based on stamina
+      ctx.fillStyle = stamina > 0.5 ? '#00e436' : (stamina > 0.15 ? '#ffec27' : '#ff4d4d')
+      ctx.fillRect(barX + 2, barY + 2, Math.max(2, (barW - 4) * (stamina / maxStamina)), barH - 4)
+      ctx.strokeStyle = 'rgba(255,255,255,0.06)'
+      ctx.strokeRect(barX, barY, barW, barH)
+
       // small controls hint
       ctx.fillStyle = '#bfe7ff'
       ctx.font = '11px monospace'
-      ctx.fillText('MOVE: ARROWS / WASD   Z: HOLD COLOR   X: RESTART', 12, HEIGHT - 10)
+      ctx.fillText('MOVE: ARROWS / WASD   Z: HOLD COLOR   X: RESTART   SHIFT: BOOST', 12, HEIGHT - 10)
 
       if(gameOver){
         // Pico-8-like modal: dark panel with bright border and colored text
