@@ -31,6 +31,7 @@ export default function App(){
     let spawnTimer = 0
     let elapsed = 0
     let score = 0
+    let bonus = 0
     let gameOver = false
 
     // richer, more 'pico' palette (neon/cool set)
@@ -62,14 +63,19 @@ export default function App(){
       player.size = 22
       player.color = colors[colorIndex]
       obstacles = []
+      particles = []
+      popups = []
       spawnTimer = 0
       elapsed = 0
       score = 0
+      bonus = 0
       gameOver = false
       colorTimer = 0
     }
 
     let obstacles = []
+    let particles = []
+    let popups = []
 
     function getSpawnInterval(){
       // spawn faster as time increases
@@ -81,7 +87,8 @@ export default function App(){
     function spawn(){
       const edge = Math.floor(rand(0,4))
       let x,y,vx,vy
-      const size = Math.floor(rand(8, 48))
+      // avoid too-small obstacles; give a reasonable random size
+      const size = Math.floor(rand(16, 48))
       const speed = rand(40, 240)
       if(edge===0){ // top
         x = rand(0, WIDTH); y = -size; vx = rand(-1,1); vy = 1
@@ -95,7 +102,9 @@ export default function App(){
       const mag = Math.hypot(vx,vy) || 1
       vx = (vx/mag) * speed
       vy = (vy/mag) * speed
-      obstacles.push({x,y,size,vx,vy})
+      // pick a color for the obstacle from the palette (avoid very-dark base color)
+      const col = colors[Math.floor(rand(0, colors.length))]
+      obstacles.push({x,y,size,vx,vy, color: col})
     }
 
     function update(dt){
@@ -148,11 +157,20 @@ export default function App(){
       }
 
       // collision detection: circle obstacle vs player square
-      for(const ob of obstacles){
+      // iterate backwards so we can remove obstacles when awarding bonus
+      for(let i = obstacles.length - 1; i >= 0; i--){
+        const ob = obstacles[i]
         const r = ob.size/2
         const rx = player.x - half
         const ry = player.y - half
         if(circleRectCollision(ob.x, ob.y, r, rx, ry, player.size, player.size)){
+          // if obstacle color matches player color, award bonus and remove obstacle
+          if(ob.color && ob.color === player.color){
+            bonus += 5
+            obstacles.splice(i, 1)
+            continue
+          }
+          // otherwise it's a hit -> game over
           gameOver = true
           break
         }
@@ -172,11 +190,11 @@ export default function App(){
 
       // draw obstacles (circles with light outline)
       for(const ob of obstacles){
-        ctx.fillStyle = '#9bd2ff'
+        ctx.fillStyle = ob.color || '#9bd2ff'
         ctx.beginPath()
         ctx.arc(ob.x, ob.y, ob.size/2, 0, Math.PI*2)
         ctx.fill()
-        ctx.strokeStyle = 'rgba(0,0,0,0.25)'
+        ctx.strokeStyle = 'rgba(0,0,0,0.28)'
         ctx.lineWidth = 1
         ctx.stroke()
       }
@@ -197,7 +215,14 @@ export default function App(){
       ctx.fillStyle = '#8cffb2'
       ctx.font = '14px monospace'
       ctx.textAlign = 'left'
-      ctx.fillText('SCORE: ' + score, 14, 26)
+      const total = Math.floor(elapsed) + bonus
+      ctx.fillText('SCORE: ' + total, 14, 26)
+
+      // draw small color indicator for player current color
+      ctx.fillStyle = player.color
+      ctx.fillRect(110, 10, 18, 18)
+      ctx.strokeStyle = 'rgba(0,0,0,0.6)'
+      ctx.strokeRect(110, 10, 18, 18)
 
       // small controls hint
       ctx.fillStyle = '#bfe7ff'
@@ -205,15 +230,21 @@ export default function App(){
       ctx.fillText('MOVE: ARROWS / WASD   Z: HOLD COLOR   X: RESTART', 12, HEIGHT - 10)
 
       if(gameOver){
-        ctx.fillStyle = 'rgba(0,0,0,0.75)'
-        ctx.fillRect(0, HEIGHT/2 - 36, WIDTH, 72)
-        ctx.fillStyle = '#ffb3b3'
+        // Pico-8-like modal: dark panel with bright border and colored text
+        ctx.fillStyle = '#031017'
+        ctx.fillRect(WIDTH/2 - 140, HEIGHT/2 - 40, 280, 80)
+        ctx.strokeStyle = '#00e436'
+        ctx.lineWidth = 3
+        ctx.strokeRect(WIDTH/2 - 140, HEIGHT/2 - 40, 280, 80)
+
+        ctx.fillStyle = '#ff77a8'
         ctx.font = '26px monospace'
         ctx.textAlign = 'center'
         ctx.fillText('GAME OVER', WIDTH/2, HEIGHT/2 - 6)
-        ctx.font = '14px monospace'
-        ctx.fillStyle = '#ffd3a6'
-        ctx.fillText('Press X to restart', WIDTH/2, HEIGHT/2 + 20)
+
+        ctx.font = '12px monospace'
+        ctx.fillStyle = '#bfe7ff'
+        ctx.fillText('Press X to restart', WIDTH/2, HEIGHT/2 + 18)
       }
     }
 
