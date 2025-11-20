@@ -29,13 +29,10 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Configure Pages
-        uses: actions/configure-pages@v4
-
-      - name: Upload artifact for Pages
-        uses: actions/upload-pages-artifact@v2
+      - name: Deploy to GitHub Pages (branch)
+        uses: peaceiris/actions-gh-pages@v4
         with:
-          path: ./dist
-
-      - name: Deploy to GitHub Pages
-        uses: actions/deploy-pages@v1
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+          publish_branch: gh-pages
+          keep_files: false
